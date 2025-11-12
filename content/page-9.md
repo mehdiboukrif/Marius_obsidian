@@ -1,5 +1,6 @@
----title: Page de Test 9
-date: 2025-11-12T11:30:35-05:00
+---
+title: Page de Test 9
+date: 2025-11-12T11:32:54-05:00
 tags:
   - test
   - page-test-9
@@ -9,7 +10,7 @@ tags:
 
 ## Liens Croisés
 
-[[Page de Test 8]] | [[Page de Test 10]] | [[Page de Test 3]]
+[[Page de Test 8]] | [[Page de Test 10]] | [[Page de Test 10]]
 
 ---
 
