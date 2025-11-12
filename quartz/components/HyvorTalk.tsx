@@ -10,8 +10,20 @@ function HyvorTalk({ displayClass }: QuartzComponentProps) {
       ></script>
       <hyvor-talk-comments
         website-id="11990"
-        page-id={window.location.pathname}
+        page-id="" // L'ID de page sera défini par JavaScript côté client
       ></hyvor-talk-comments>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            if (typeof window !== 'undefined') {
+              const comments = document.querySelector('hyvor-talk-comments');
+              if (comments) {
+                comments.setAttribute('page-id', window.location.pathname);
+              }
+            }
+          `,
+        }}
+      />
     </div>
   )
 }
