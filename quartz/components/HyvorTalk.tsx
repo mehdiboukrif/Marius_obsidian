@@ -2,7 +2,7 @@ import { QuartzComponentConstructor, QuartzComponentProps } from "./types"
 
 function HyvorTalk({ fileData, displayClass }: QuartzComponentProps) {
   // Utiliser le slug de la page comme identifiant unique pour Hyvor Talk
-  const pageId = fileData.slug
+  const pageId = fileData.slug || "homepage"
   
   return (
     <div class={displayClass}>
