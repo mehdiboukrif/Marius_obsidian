@@ -1,6 +1,9 @@
 import { QuartzComponentConstructor, QuartzComponentProps } from "./types"
 
-function HyvorTalk({ displayClass }: QuartzComponentProps) {
+function HyvorTalk({ fileData, displayClass }: QuartzComponentProps) {
+  // Utiliser le slug de la page comme identifiant unique pour Hyvor Talk
+  const pageId = fileData.slug
+  
   return (
     <div class={displayClass}>
       <script
@@ -10,20 +13,9 @@ function HyvorTalk({ displayClass }: QuartzComponentProps) {
       ></script>
       <hyvor-talk-comments
         website-id="11990"
-        page-id="" // L'ID de page sera défini par JavaScript côté client
+        page-id={pageId} // Utilisation du slug unique de la page
       ></hyvor-talk-comments>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            if (typeof window !== 'undefined') {
-              const comments = document.querySelector('hyvor-talk-comments');
-              if (comments) {
-                comments.setAttribute('page-id', window.location.pathname);
-              }
-            }
-          `,
-        }}
-      />
+      {/* Le script JS côté client n'est plus nécessaire car le page-id est défini côté serveur */}
     </div>
   )
 }
