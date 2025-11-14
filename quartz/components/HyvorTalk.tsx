@@ -45,13 +45,8 @@ HyvorTalk.afterDOMLoaded = `
     loadHyvorTalk();
   });
   
-  // Nettoyer avant chaque navigation
-  window.addCleanup(() => {
-    const container = document.getElementById('hyvor-talk-container');
-    if (container) {
-      container.innerHTML = '';
-    }
-  });
+  // Le nettoyage est géré par la fonction loadHyvorTalk() elle-même (suppression de l'ancien composant)
+  // Nous n'avons pas besoin de window.addCleanup ici.
 `;
 
 export default (() => HyvorTalk) satisfies QuartzComponentConstructor
