@@ -8,34 +8,50 @@ function HyvorTalk({ displayClass }: QuartzComponentProps) {
         src="https://talk.hyvor.com/embed/embed.js"
         type="module"
       ></script>
-      <hyvor-talk-comments
-        website-id="11990"
-        // Le page-id sera défini dynamiquement par le script ci-dessous
-      ></hyvor-talk-comments>
+      {/* Conteneur pour les commentaires - sera rempli dynamiquement */}
+      <div id="hyvor-talk-container"></div>
     </div>
   )
 }
 
-// Script pour gérer le routage SPA de Quartz
+// Script pour gérer le routage SPA de Quartz avec création dynamique du composant
 HyvorTalk.afterDOMLoaded = `
-  document.addEventListener("nav", () => {
-    const comments = document.querySelector('hyvor-talk-comments');
-    if (comments) {
-      // 1. Définir le page-id avec le chemin d'accès unique (y compris le nom du dépôt)
-      comments.setAttribute('page-id', window.location.pathname);
-      
-      // 2. Appeler la fonction de rechargement de Hyvor Talk si elle existe
-      if (window.HyvorTalk && window.HyvorTalk.reload) {
-        window.HyvorTalk.reload();
-      }
+  function loadHyvorTalk() {
+    const container = document.getElementById('hyvor-talk-container');
+    if (!container) return;
+    
+    // Supprimer l'ancien composant s'il existe
+    const oldComments = container.querySelector('hyvor-talk-comments');
+    if (oldComments) {
+      oldComments.remove();
     }
+    
+    // Créer un nouveau composant avec le page-id correct
+    const comments = document.createElement('hyvor-talk-comments');
+    comments.setAttribute('website-id', '11990');
+    comments.setAttribute('page-id', window.location.pathname);
+    
+    // Insérer dans le conteneur
+    container.appendChild(comments);
+    
+    console.log('Hyvor Talk chargé pour la page:', window.location.pathname);
+  }
+  
+  // Charger au démarrage initial
+  loadHyvorTalk();
+  
+  // Recharger à chaque navigation SPA
+  document.addEventListener("nav", () => {
+    loadHyvorTalk();
   });
   
-  // Exécuter une fois au chargement initial
-  const initialComments = document.querySelector('hyvor-talk-comments');
-  if (initialComments) {
-    initialComments.setAttribute('page-id', window.location.pathname);
-  }
+  // Nettoyer avant chaque navigation
+  window.addCleanup(() => {
+    const container = document.getElementById('hyvor-talk-container');
+    if (container) {
+      container.innerHTML = '';
+    }
+  });
 `;
 
 export default (() => HyvorTalk) satisfies QuartzComponentConstructor
