@@ -3,56 +3,41 @@ import { QuartzComponentConstructor, QuartzComponentProps } from "./types"
 function HyvorTalk({ displayClass }: QuartzComponentProps) {
   return (
     <div class={displayClass}>
-      <script
-        async
-        src="https://talk.hyvor.com/embed/embed.js"
-        type="module"
-      ></script>
-      <hyvor-talk-comments
-        website-id="11990"
-        // Le page-id sera défini dynamiquement par le script ci-dessous
-      ></hyvor-talk-comments>
+      {/* Iframe qui chargera la page de commentaires isolée */}
+      <iframe 
+        id="hyvor-talk-iframe"
+        style={{ width: '100%', border: 'none', minHeight: '500px' }}
+        title="Hyvor Talk Comments"
+      ></iframe>
     </div>
   )
 }
 
-// Script pour gérer le routage SPA de Quartz avec l'API HyvorTalk.reload()
+// Script pour gérer le routage SPA de Quartz avec l'iframe
 HyvorTalk.afterDOMLoaded = `
-  function reloadHyvorTalk() {
-    // 1. Définir le page-id avec le chemin d'accès unique
-    const comments = document.querySelector('hyvor-talk-comments');
-    if (comments) {
-      comments.setAttribute('page-id', window.location.pathname);
+  const iframe = document.getElementById('hyvor-talk-iframe');
+  const baseIframeSrc = './static/hyvor-comments.html';
+  
+  function updateIframeSrc() {
+    // Le page-id est l'URL relative de la page (ex: /Marius_obsidian/page-1)
+    const pageId = window.location.pathname;
+    
+    // Construire l'URL de l'iframe avec le page-id en paramètre
+    const newSrc = \`\${baseIframeSrc}?page_id=\${encodeURIComponent(pageId)}\`;
+    
+    // Mettre à jour l'iframe
+    if (iframe.src !== newSrc) {
+      iframe.src = newSrc;
+      console.log('Hyvor Talk Iframe rechargé pour la page:', pageId);
     }
-
-    // 2. Tenter de recharger le widget Hyvor Talk
-    let attempts = 0;
-    const maxAttempts = 20; // Tenter pendant 2 secondes (20 * 100ms)
-
-    const checkAndReload = setInterval(() => {
-      if (window.HyvorTalk && window.HyvorTalk.reload) {
-        // Passer l'identifiant de la page et l'URL pour forcer la mise à jour
-        window.HyvorTalk.reload(window.location.pathname, window.location.href);
-        clearInterval(checkAndReload);
-        console.log('Hyvor Talk rechargé pour la page:', window.location.pathname);
-      } else if (attempts >= maxAttempts) {
-        clearInterval(checkAndReload);
-        console.error('Hyvor Talk API non disponible après plusieurs tentatives.');
-      }
-      attempts++;
-    }, 100);
   }
   
   // Charger au démarrage initial
-  // Le widget se charge automatiquement, nous n'avons qu'à définir le page-id
-  const initialComments = document.querySelector('hyvor-talk-comments');
-  if (initialComments) {
-    initialComments.setAttribute('page-id', window.location.pathname);
-  }
+  updateIframeSrc();
 
   // Recharger à chaque navigation SPA
   document.addEventListener("nav", () => {
-    reloadHyvorTalk();
+    updateIframeSrc();
   });
 `;
 
