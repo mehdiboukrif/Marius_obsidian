@@ -8,47 +8,51 @@ function HyvorTalk({ displayClass }: QuartzComponentProps) {
         src="https://talk.hyvor.com/embed/embed.js"
         type="module"
       ></script>
-      {/* Conteneur pour les commentaires - sera rempli dynamiquement */}
-      <div id="hyvor-talk-container"></div>
+      <hyvor-talk-comments
+        website-id="11990"
+        // Le page-id sera défini dynamiquement par le script ci-dessous
+      ></hyvor-talk-comments>
     </div>
   )
 }
 
-// Script pour gérer le routage SPA de Quartz avec création dynamique du composant
+// Script pour gérer le routage SPA de Quartz avec l'API HyvorTalk.reload()
 HyvorTalk.afterDOMLoaded = `
-  function loadHyvorTalk() {
-    setTimeout(() => {
-      const container = document.getElementById('hyvor-talk-container');
-      if (!container) return;
-      
-      // Supprimer l'ancien composant s'il existe
-      const oldComments = container.querySelector('hyvor-talk-comments');
-      if (oldComments) {
-        oldComments.remove();
-      }
-      
-      // Créer un nouveau composant avec le page-id correct
-      const comments = document.createElement('hyvor-talk-comments');
-      comments.setAttribute('website-id', '11990');
+  function reloadHyvorTalk() {
+    // 1. Définir le page-id avec le chemin d'accès unique
+    const comments = document.querySelector('hyvor-talk-comments');
+    if (comments) {
       comments.setAttribute('page-id', window.location.pathname);
-      
-      // Insérer dans le conteneur
-      container.appendChild(comments);
-      
-      console.log('Hyvor Talk chargé pour la page:', window.location.pathname);
-    }, 50); // Délai de 50ms pour permettre au DOM de se stabiliser
+    }
+
+    // 2. Tenter de recharger le widget Hyvor Talk
+    let attempts = 0;
+    const maxAttempts = 20; // Tenter pendant 2 secondes (20 * 100ms)
+
+    const checkAndReload = setInterval(() => {
+      if (window.HyvorTalk && window.HyvorTalk.reload) {
+        window.HyvorTalk.reload();
+        clearInterval(checkAndReload);
+        console.log('Hyvor Talk rechargé pour la page:', window.location.pathname);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(checkAndReload);
+        console.error('Hyvor Talk API non disponible après plusieurs tentatives.');
+      }
+      attempts++;
+    }, 100);
   }
   
   // Charger au démarrage initial
-  loadHyvorTalk();
-  
+  // Le widget se charge automatiquement, nous n'avons qu'à définir le page-id
+  const initialComments = document.querySelector('hyvor-talk-comments');
+  if (initialComments) {
+    initialComments.setAttribute('page-id', window.location.pathname);
+  }
+
   // Recharger à chaque navigation SPA
   document.addEventListener("nav", () => {
-    loadHyvorTalk();
+    reloadHyvorTalk();
   });
-  
-  // Le nettoyage est géré par la fonction loadHyvorTalk() elle-même (suppression de l'ancien composant)
-  // Nous n'avons pas besoin de window.addCleanup ici.
 `;
 
 export default (() => HyvorTalk) satisfies QuartzComponentConstructor
