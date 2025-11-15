@@ -31,7 +31,8 @@ HyvorTalk.afterDOMLoaded = `
 
     const checkAndReload = setInterval(() => {
       if (window.HyvorTalk && window.HyvorTalk.reload) {
-        window.HyvorTalk.reload();
+        // Passer l'identifiant de la page et l'URL pour forcer la mise à jour
+        window.HyvorTalk.reload(window.location.pathname, window.location.href);
         clearInterval(checkAndReload);
         console.log('Hyvor Talk rechargé pour la page:', window.location.pathname);
       } else if (attempts >= maxAttempts) {
