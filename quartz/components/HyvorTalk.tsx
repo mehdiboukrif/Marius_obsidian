@@ -3,41 +3,45 @@ import { QuartzComponentConstructor, QuartzComponentProps } from "./types"
 function HyvorTalk({ displayClass }: QuartzComponentProps) {
   return (
     <div class={displayClass}>
-      {/* Iframe qui chargera la page de commentaires isolée */}
-      <iframe 
-        id="hyvor-talk-iframe"
-        style={{ width: '100%', border: 'none', minHeight: '500px' }}
-        title="Hyvor Talk Comments"
-      ></iframe>
+      {/* Conteneur principal pour le widget Hyvor Talk */}
+      <div id="hyvor-talk-wrapper"></div>
     </div>
   )
 }
 
-// Script pour gérer le routage SPA de Quartz avec l'iframe
+// Script pour gérer le routage SPA de Quartz avec recréation complète du script
 HyvorTalk.afterDOMLoaded = `
-  const iframe = document.getElementById('hyvor-talk-iframe');
-  const baseIframeSrc = './static/hyvor-comments.html';
-  
-  function updateIframeSrc() {
-    // Le page-id est l'URL relative de la page (ex: /Marius_obsidian/page-1)
-    const pageId = window.location.pathname;
+  const wrapper = document.getElementById('hyvor-talk-wrapper');
+  if (!wrapper) return;
+
+  function loadHyvorTalk() {
+    // 1. Nettoyer le conteneur
+    wrapper.innerHTML = '';
+
+    // 2. Créer l'élément de commentaires
+    const comments = document.createElement('hyvor-talk-comments');
+    comments.setAttribute('website-id', '11990');
+    comments.setAttribute('page-id', window.location.pathname);
     
-    // Construire l'URL de l'iframe avec le page-id en paramètre
-    const newSrc = \`\${baseIframeSrc}?page_id=\${encodeURIComponent(pageId)}\`;
+    // 3. Créer l'élément script pour forcer le rechargement du script d'intégration
+    const script = document.createElement('script');
+    script.setAttribute('async', '');
+    script.setAttribute('src', 'https://talk.hyvor.com/embed/embed.js');
+    script.setAttribute('type', 'module');
+
+    // 4. Insérer les éléments dans le conteneur
+    wrapper.appendChild(comments);
+    wrapper.appendChild(script);
     
-    // Mettre à jour l'iframe
-    if (iframe.src !== newSrc) {
-      iframe.src = newSrc;
-      console.log('Hyvor Talk Iframe rechargé pour la page:', pageId);
-    }
+    console.log('Hyvor Talk complètement rechargé pour la page:', window.location.pathname);
   }
   
   // Charger au démarrage initial
-  updateIframeSrc();
+  loadHyvorTalk();
 
   // Recharger à chaque navigation SPA
   document.addEventListener("nav", () => {
-    updateIframeSrc();
+    loadHyvorTalk();
   });
 `;
 
