@@ -47,7 +47,8 @@ export const defaultContentPageLayout: PageLayout = {
     Component.DesktopOnly(Component.TableOfContents()),
     Component.Backlinks(),
   ],
-  aftafterBody: [HyvorTalkScript({ displayClass: "comments" })],,
+  afterBody: [
+    HyvorTalkScript({ displayClass: "comments" }),
   ],
 }
 
