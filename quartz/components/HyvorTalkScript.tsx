@@ -138,20 +138,17 @@ HyvorTalkScript.afterDOMLoaded = `
       isInitializing = true;
       log('Navigation detected, reinitializing...');
       
-      // Supprimer les commentaires existants
+      // Vider complètement le conteneur pour éviter les conflits
       const container = document.getElementById('hyvor-talk-root');
       if (container) {
-        const existing = container.querySelector('.hyvor-talk-wrapper');
-        if (existing) {
-          existing.remove();
-        }
+        container.innerHTML = '';
       }
       
-      // Réinitialiser après un court délai
+      // Réinitialiser après un délai pour s'assurer que le script Hyvor Talk a terminé
       setTimeout(() => {
         init();
         isInitializing = false;
-      }, 200);
+      }, 300);
     }
   });
 
