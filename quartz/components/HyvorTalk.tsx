@@ -42,7 +42,7 @@ HyvorTalk.afterDOMLoaded = `
 
     // Créer l'élément de commentaires
     const comments = document.createElement('hyvor-talk-comments');
-    comments.setAttribute('website-id', '11990');
+    comments.setAttribute('website-id', '14523');
     comments.setAttribute('page-id', window.location.href);
     comments.setAttribute('loading', 'default');
 
