@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyvor Talk Comments</title>
+    <style>
+        body, html { margin: 0; padding: 0; }
+    </style>
+</head>
+<body>
+    <script async src="https://talk.hyvor.com/embed/embed.js" type="module"></script>
+    <hyvor-talk-comments website-id="11990"></hyvor-talk-comments>
+
+    <script>
+        // Récupérer le page-id depuis les paramètres de l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const pageId = urlParams.get('page_id');
+
+        // Définir le page-id sur le composant
+        const comments = document.querySelector('hyvor-talk-comments');
+        if (comments && pageId) {
+            comments.setAttribute('page-id', pageId);
+        }
+    </script>
+</body>
+</html>
