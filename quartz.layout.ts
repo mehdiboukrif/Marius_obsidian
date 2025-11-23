@@ -16,7 +16,7 @@ export const sharedPageComponents: SharedLayout = {
 
 // components for pages that display a single page (e.g. a single note)
 import * as Component from "./quartz/components"
-import HyvorTalk from "./quartz/components/HyvorTalk"
+import HyvorTalkBase from "./quartz/components/HyvorTalkBase"
 export const defaultContentPageLayout: PageLayout = {
   beforeBody: [
     Component.ConditionalRender({
@@ -48,7 +48,7 @@ export const defaultContentPageLayout: PageLayout = {
     Component.Backlinks(),
   ],
   afterBody: [
-    HyvorTalk({ displayClass: "comments" }),
+    HyvorTalkBase({ displayClass: "comments" }),
   ],
 }
 
