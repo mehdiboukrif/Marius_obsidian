@@ -50,6 +50,8 @@ const fetchContentCache: Map<FullSlug, Element[]> = new Map()
 const contextWindowWords = 30
 const numSearchResults = 8
 const numTagResults = 5
+let indexPopulated = false
+let indexPopulatePromise: Promise<void> | null = null
 
 const tokenizeTerm = (term: string) => {
   const tokens = term.split(/\s+/).filter((t) => t.trim() !== "")
@@ -149,6 +151,36 @@ function highlightHTML(searchTerm: string, el: HTMLElement) {
   return html.body
 }
 
+function ensureIndexPopulated(data: ContentIndex) {
+  if (indexPopulated) {
+    return Promise.resolve()
+  }
+
+  if (!indexPopulatePromise) {
+    indexPopulatePromise = fillDocument(data).finally(() => {
+      indexPopulatePromise = null
+    })
+  }
+
+  return indexPopulatePromise
+}
+
+function scheduleIndexPopulation(data: ContentIndex) {
+  if (indexPopulated || indexPopulatePromise) {
+    return
+  }
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(() => {
+      void ensureIndexPopulated(data)
+    })
+  } else {
+    window.setTimeout(() => {
+      void ensureIndexPopulated(data)
+    }, 200)
+  }
+}
+
 async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: ContentIndex) {
   const container = searchElement.querySelector(".search-container") as HTMLElement
   if (!container) return
@@ -200,6 +232,7 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
     if (sidebar) sidebar.style.zIndex = "1"
     container.classList.add("active")
     searchBar.focus()
+    void ensureIndexPopulated(data)
   }
 
   let currentHover: HTMLInputElement | null = null
@@ -398,6 +431,7 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
   }
 
   async function onType(e: HTMLElementEventMap["input"]) {
+    await ensureIndexPopulated(data)
     if (!searchLayout || !index) return
     currentSearchTerm = (e.target as HTMLInputElement).value
     searchLayout.classList.toggle("display-results", currentSearchTerm !== "")
@@ -457,13 +491,14 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
 
   document.addEventListener("keydown", shortcutHandler)
   window.addCleanup(() => document.removeEventListener("keydown", shortcutHandler))
-  searchButton.addEventListener("click", () => showSearch("basic"))
-  window.addCleanup(() => searchButton.removeEventListener("click", () => showSearch("basic")))
+  const openBasicSearch = () => showSearch("basic")
+  searchButton.addEventListener("click", openBasicSearch)
+  window.addCleanup(() => searchButton.removeEventListener("click", openBasicSearch))
   searchBar.addEventListener("input", onType)
   window.addCleanup(() => searchBar.removeEventListener("input", onType))
 
   registerEscapeHandler(container, hideSearch)
-  await fillDocument(data)
+  scheduleIndexPopulation(data)
 }
 
 /**
@@ -471,7 +506,6 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
  * @param index index to fill
  * @param data data to fill index with
  */
-let indexPopulated = false
 async function fillDocument(data: ContentIndex) {
   if (indexPopulated) return
   let id = 0

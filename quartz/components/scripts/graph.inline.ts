@@ -9,11 +9,10 @@ import {
   forceLink,
   forceCollide,
   forceRadial,
-  zoomIdentity,
-  select,
-  drag,
-  zoom,
-} from "d3"
+} from "d3-force"
+import { zoom, zoomIdentity } from "d3-zoom"
+import { select } from "d3-selection"
+import { drag } from "d3-drag"
 import { Text, Graphics, Application, Container, Circle } from "pixi.js"
 import { Group as TweenGroup, Tween as Tweened } from "@tweenjs/tween.js"
 import { registerEscapeHandler, removeAllChildren } from "./util"
@@ -558,8 +557,13 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
 
 let localGraphCleanups: (() => void)[] = []
 let globalGraphCleanups: (() => void)[] = []
+let localGraphObserver: IntersectionObserver | null = null
+let localGraphMountToken = 0
 
 function cleanupLocalGraphs() {
+  localGraphObserver?.disconnect()
+  localGraphObserver = null
+  localGraphMountToken++
   for (const cleanup of localGraphCleanups) {
     cleanup()
   }
@@ -573,21 +577,50 @@ function cleanupGlobalGraphs() {
   globalGraphCleanups = []
 }
 
+function setupLazyLocalGraphs(slug: FullSlug) {
+  cleanupLocalGraphs()
+  const localGraphContainers = document.getElementsByClassName("graph-container")
+  if (localGraphContainers.length === 0) {
+    return
+  }
+
+  const token = localGraphMountToken
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        observer.unobserve(entry.target)
+        const target = entry.target as HTMLElement
+        void renderGraph(target, slug)
+          .then((cleanup) => {
+            if (token !== localGraphMountToken) {
+              cleanup()
+              return
+            }
+
+            localGraphCleanups.push(cleanup)
+          })
+          .catch((err) => {
+            console.error(err)
+          })
+      }
+    },
+    { rootMargin: "200px 0px" },
+  )
+
+  localGraphObserver = observer
+  for (const container of localGraphContainers) {
+    observer.observe(container)
+  }
+}
+
 document.addEventListener("nav", async (e: CustomEventMap["nav"]) => {
   const slug = e.detail.url
   addToVisited(simplifySlug(slug))
 
-  async function renderLocalGraph() {
-    cleanupLocalGraphs()
-    const localGraphContainers = document.getElementsByClassName("graph-container")
-    for (const container of localGraphContainers) {
-      localGraphCleanups.push(await renderGraph(container as HTMLElement, slug))
-    }
-  }
-
-  await renderLocalGraph()
+  setupLazyLocalGraphs(slug)
   const handleThemeChange = () => {
-    void renderLocalGraph()
+    setupLazyLocalGraphs(slug)
   }
 
   document.addEventListener("themechange", handleThemeChange)
