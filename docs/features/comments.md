@@ -8,7 +8,7 @@ Quartz also has the ability to hook into various providers to enable readers to 
 
 ![[giscus-example.png]]
 
-As of today, only [Giscus](https://giscus.app/) is supported out of the box but PRs to support other providers are welcome!
+Quartz currently ships with native integrations for both [Giscus](https://giscus.app/) and [Hyvor Talk](https://talk.hyvor.com/). PRs to support other providers are welcome!
 
 ## Providers
 
@@ -52,52 +52,96 @@ afterBody: [
 ],
 ```
 
+### Hyvor Talk
+
+If you prefer using Hyvor Talk, grab your **Website ID** from the Hyvor Talk dashboard (Settings → Install). Then configure the `afterBody` layout with the `hyvor_talk` provider:
+
+```ts title="quartz.layout.ts"
+afterBody: [
+  Component.Comments({
+    provider: "hyvor_talk",
+    options: {
+      websiteId: "14523",
+      // host: "https://talk.hyvor.com", // optional, only needed for self-hosted/enterprise instances
+    },
+  }),
+],
+```
+
+Quartz automatically injects the Hyvor Talk embed script, keeps the discussion in sync with Quartz's SPA navigation, and reinitializes the widget whenever visitors change pages.
+
+> Tip: if you only want comments on Markdown pages (and not on folders or tag indexes), wrap the component with `Component.ConditionalRender`:
+
+```ts title="quartz.layout.ts"
+afterBody: [
+  Component.ConditionalRender({
+    component: Component.Comments({
+      provider: "hyvor_talk",
+      options: { websiteId: "14523" },
+    }),
+    condition: (page) => {
+      const relativePath = page.fileData.relativePath as string | undefined
+      return !!relativePath && relativePath.endsWith(".md")
+    },
+  }),
+],
+```
+
 ### Customization
 
-Quartz also exposes a few of the other Giscus options as well and you can provide them the same way `repo`, `repoId`, `category`, and `categoryId` are provided.
+Quartz exposes most of the useful provider options so you can fine-tune the experience:
 
 ```ts
-type Options = {
-  provider: "giscus"
-  options: {
-    repo: `${string}/${string}`
-    repoId: string
-    category: string
-    categoryId: string
+type Options =
+  | {
+      provider: "giscus"
+      options: {
+        repo: `${string}/${string}`
+        repoId: string
+        category: string
+        categoryId: string
 
-    // Url to folder with custom themes
-    // defaults to 'https://${cfg.baseUrl}/static/giscus'
-    themeUrl?: string
+        // Url to folder with custom themes
+        // defaults to 'https://${cfg.baseUrl}/static/giscus'
+        themeUrl?: string
 
-    // filename for light theme .css file
-    // defaults to 'light'
-    lightTheme?: string
+        // filename for light theme .css file
+        // defaults to 'light'
+        lightTheme?: string
 
-    // filename for dark theme .css file
-    // defaults to 'dark'
-    darkTheme?: string
+        // filename for dark theme .css file
+        // defaults to 'dark'
+        darkTheme?: string
 
-    // how to map pages -> discussions
-    // defaults to 'url'
-    mapping?: "url" | "title" | "og:title" | "specific" | "number" | "pathname"
+        // how to map pages -> discussions
+        // defaults to 'url'
+        mapping?: "url" | "title" | "og:title" | "specific" | "number" | "pathname"
 
-    // use strict title matching
-    // defaults to true
-    strict?: boolean
+        // use strict title matching
+        // defaults to true
+        strict?: boolean
 
-    // whether to enable reactions for the main post
-    // defaults to true
-    reactionsEnabled?: boolean
+        // whether to enable reactions for the main post
+        // defaults to true
+        reactionsEnabled?: boolean
 
-    // where to put the comment input box relative to the comments
-    // defaults to 'bottom'
-    inputPosition?: "top" | "bottom"
+        // where to put the comment input box relative to the comments
+        // defaults to 'bottom'
+        inputPosition?: "top" | "bottom"
 
-    // set your preference language here
-    // defaults to 'en'
-    lang?: string
-  }
-}
+        // set your preference language here
+        // defaults to 'en'
+        lang?: string
+      }
+    }
+  | {
+      provider: "hyvor_talk"
+      options: {
+        websiteId: string
+        // Set if you use a self-hosted Hyvor Talk instance
+        host?: string
+      }
+    }
 ```
 
 #### Custom CSS theme

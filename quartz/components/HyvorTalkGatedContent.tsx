@@ -1,6 +1,6 @@
 import { QuartzComponentConstructor, QuartzComponentProps } from "./types"
 
-function HyvorTalkGatedContent({ children }: QuartzComponentProps) {
+function HyvorTalkGatedContent(_: QuartzComponentProps) {
   // Le composant n'a pas besoin de rendre le contenu lui-même.
   // Il sert de marqueur pour le contenu premium.
   // Le contenu sera inséré directement dans le HTML généré par le moteur de rendu de Quartz.
