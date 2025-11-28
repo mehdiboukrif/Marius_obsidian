@@ -1,7 +1,17 @@
-import FlexSearch, { DefaultDocumentSearchResults } from "flexsearch"
 import { ContentDetails } from "../../plugins/emitters/contentIndex"
 import { registerEscapeHandler, removeAllChildren } from "./util"
 import { FullSlug, normalizeRelativeURLs, resolveRelative } from "../../util/path"
+
+// Lazy load FlexSearch only when search is opened
+type FlexSearchModule = typeof import("flexsearch")
+let FlexSearch: FlexSearchModule | null = null
+let index: any = null
+
+async function loadSearchDependency() {
+  if (FlexSearch) return FlexSearch
+  FlexSearch = (await import("flexsearch")) as any
+  return FlexSearch
+}
 
 interface Item {
   id: number
@@ -23,27 +33,34 @@ const encoder = (str: string) => {
     .filter((token) => token.length > 0)
 }
 
-let index = new FlexSearch.Document<Item>({
-  encode: encoder,
-  document: {
-    id: "id",
-    tag: "tags",
-    index: [
-      {
-        field: "title",
-        tokenize: "forward",
-      },
-      {
-        field: "content",
-        tokenize: "forward",
-      },
-      {
-        field: "tags",
-        tokenize: "forward",
-      },
-    ],
-  },
-})
+async function initializeIndex() {
+  if (index) return index
+  
+  const FlexSearchModule: any = await loadSearchDependency()
+  index = new FlexSearchModule.default.Document({
+    encode: encoder,
+    document: {
+      id: "id",
+      tag: "tags",
+      index: [
+        {
+          field: "title",
+          tokenize: "forward",
+        },
+        {
+          field: "content",
+          tokenize: "forward",
+        },
+        {
+          field: "tags",
+          tokenize: "forward",
+        },
+      ],
+    },
+  })
+  
+  return index
+}
 
 const p = new DOMParser()
 const fetchContentCache: Map<FullSlug, Element[]> = new Map()
@@ -398,12 +415,17 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
   }
 
   async function onType(e: HTMLElementEventMap["input"]) {
-    if (!searchLayout || !index) return
+    if (!searchLayout) return
+    
+    // Initialize index on first search
+    const searchIndex = await initializeIndex()
+    if (!searchIndex) return
+    
     currentSearchTerm = (e.target as HTMLInputElement).value
     searchLayout.classList.toggle("display-results", currentSearchTerm !== "")
     searchType = currentSearchTerm.startsWith("#") ? "tags" : "basic"
 
-    let searchResults: DefaultDocumentSearchResults<Item>
+    let searchResults: any
     if (searchType === "tags") {
       currentSearchTerm = currentSearchTerm.substring(1).trim()
       const separatorIndex = currentSearchTerm.indexOf(" ")
@@ -411,7 +433,7 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
         // search by title and content index and then filter by tag (implemented in flexsearch)
         const tag = currentSearchTerm.substring(0, separatorIndex)
         const query = currentSearchTerm.substring(separatorIndex + 1).trim()
-        searchResults = await index.searchAsync({
+        searchResults = await searchIndex.searchAsync({
           query: query,
           // return at least 10000 documents, so it is enough to filter them by tag (implemented in flexsearch)
           limit: Math.max(numSearchResults, 10000),
@@ -426,14 +448,14 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
         currentSearchTerm = query
       } else {
         // default search by tags index
-        searchResults = await index.searchAsync({
+        searchResults = await searchIndex.searchAsync({
           query: currentSearchTerm,
           limit: numSearchResults,
           index: ["tags"],
         })
       }
     } else if (searchType === "basic") {
-      searchResults = await index.searchAsync({
+      searchResults = await searchIndex.searchAsync({
         query: currentSearchTerm,
         limit: numSearchResults,
         index: ["title", "content"],
@@ -441,7 +463,7 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
     }
 
     const getByField = (field: string): number[] => {
-      const results = searchResults.filter((x) => x.field === field)
+      const results = searchResults.filter((x: any) => x.field === field)
       return results.length === 0 ? [] : ([...results[0].result] as number[])
     }
 
@@ -468,17 +490,18 @@ async function setupSearch(searchElement: Element, currentSlug: FullSlug, data: 
 
 /**
  * Fills flexsearch document with data
- * @param index index to fill
  * @param data data to fill index with
  */
 let indexPopulated = false
 async function fillDocument(data: ContentIndex) {
   if (indexPopulated) return
+  
+  const searchIndex = await initializeIndex()
   let id = 0
   const promises: Array<Promise<unknown>> = []
   for (const [slug, fileData] of Object.entries<ContentDetails>(data)) {
     promises.push(
-      index.addAsync(id++, {
+      searchIndex.addAsync(id++, {
         id,
         slug: slug as FullSlug,
         title: fileData.title,

@@ -68,9 +68,17 @@ async function joinScripts(scripts: string[]): Promise<string> {
   // wrap with iife to prevent scope collision
   const script = scripts.map((script) => `(function () {${script}})();`).join("\n")
 
-  // minify with esbuild
+  // minify with esbuild - optimized for better compression
   const res = await transpile(script, {
     minify: true,
+    target: "es2020",
+    format: "iife",
+    treeShaking: true,
+    // Enable advanced optimizations
+    mangleProps: /^_/,
+    minifyWhitespace: true,
+    minifyIdentifiers: true,
+    minifySyntax: true,
   })
 
   return res.code

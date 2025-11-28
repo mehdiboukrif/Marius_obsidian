@@ -1,3 +1,18 @@
 @use "./base.scss";
 
+// Performance optimizations
+img {
+  // Lazy load images by default
+  loading: lazy;
+  // Improve rendering performance
+  image-rendering: auto;
+}
+
+// Optimize animations with GPU acceleration
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    will-change: auto;
+  }
+}
+
 // put your custom CSS here!

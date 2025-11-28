@@ -1,28 +1,38 @@
 import type { ContentDetails } from "../../plugins/emitters/contentIndex"
-import {
-  SimulationNodeDatum,
-  SimulationLinkDatum,
-  Simulation,
-  forceSimulation,
-  forceManyBody,
-  forceCenter,
-  forceLink,
-  forceCollide,
-  forceRadial,
-  zoomIdentity,
-  select,
-  drag,
-  zoom,
-} from "d3"
-import { Text, Graphics, Application, Container, Circle } from "pixi.js"
-import { Group as TweenGroup, Tween as Tweened } from "@tweenjs/tween.js"
 import { registerEscapeHandler, removeAllChildren } from "./util"
 import { FullSlug, SimpleSlug, getFullSlug, resolveRelative, simplifySlug } from "../../util/path"
 import { D3Config } from "../Graph"
 
+// Lazy load heavy dependencies only when needed
+type D3Module = typeof import("d3")
+type PixiModule = typeof import("pixi.js")
+type TweenModule = typeof import("@tweenjs/tween.js")
+
+let d3Module: D3Module | null = null
+let pixiModule: PixiModule | null = null
+let tweenModule: TweenModule | null = null
+
+async function loadGraphDependencies() {
+  if (d3Module && pixiModule && tweenModule) {
+    return { d3Module, pixiModule, tweenModule }
+  }
+
+  const [d3, pixi, tween] = await Promise.all([
+    import("d3"),
+    import("pixi.js"),
+    import("@tweenjs/tween.js"),
+  ])
+
+  d3Module = d3
+  pixiModule = pixi
+  tweenModule = tween
+
+  return { d3Module, pixiModule, tweenModule }
+}
+
 type GraphicsInfo = {
   color: string
-  gfx: Graphics
+  gfx: any // Graphics from pixi.js
   alpha: number
   active: boolean
 }
@@ -31,7 +41,12 @@ type NodeData = {
   id: SimpleSlug
   text: string
   tags: string[]
-} & SimulationNodeDatum
+  x?: number
+  y?: number
+  fx?: number | null
+  fy?: number | null
+  __initialDragPos?: { x: number; y: number; fx: number | null; fy: number | null }
+}
 
 type SimpleLinkData = {
   source: SimpleSlug
@@ -41,7 +56,7 @@ type SimpleLinkData = {
 type LinkData = {
   source: NodeData
   target: NodeData
-} & SimulationLinkDatum<NodeData>
+}
 
 type LinkRenderData = GraphicsInfo & {
   simulationData: LinkData
@@ -49,7 +64,7 @@ type LinkRenderData = GraphicsInfo & {
 
 type NodeRenderData = GraphicsInfo & {
   simulationData: NodeData
-  label: Text
+  label: any // Text from pixi.js
 }
 
 const localStorageKey = "graph-visited"
@@ -69,6 +84,25 @@ type TweenNode = {
 }
 
 async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
+  // Load heavy dependencies only when graph is rendered
+  const { d3Module: d3, pixiModule: pixi, tweenModule: tween } = await loadGraphDependencies()
+  
+  const {
+    forceSimulation,
+    forceManyBody,
+    forceCenter,
+    forceLink,
+    forceCollide,
+    forceRadial,
+    zoomIdentity,
+    select,
+    drag,
+    zoom,
+  } = d3
+  
+  const { Text, Graphics, Application, Container, Circle } = pixi
+  const { Group: TweenGroup, Tween: Tweened } = tween
+  
   const slug = simplifySlug(fullSlug)
   const visited = getVisited()
   removeAllChildren(graph)
@@ -165,11 +199,11 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
   const height = Math.max(graph.offsetHeight, 250)
 
   // we virtualize the simulation and use pixi to actually render it
-  const simulation: Simulation<NodeData, LinkData> = forceSimulation<NodeData>(graphData.nodes)
+  const simulation = forceSimulation(graphData.nodes)
     .force("charge", forceManyBody().strength(-100 * repelForce))
     .force("center", forceCenter().strength(centerForce))
     .force("link", forceLink(graphData.links).distance(linkDistance))
-    .force("collide", forceCollide<NodeData>((n) => nodeRadius(n)).iterations(3))
+    .force("collide", forceCollide((n: NodeData) => nodeRadius(n)).iterations(3))
 
   const radius = (Math.min(width, height) / 2) * 0.8
   if (enableRadial) simulation.force("radial", forceRadial(radius).strength(0.2))
@@ -263,14 +297,14 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       }
 
       l.color = l.active ? computedStyleMap["--gray"] : computedStyleMap["--lightgray"]
-      tweenGroup.add(new Tweened<LinkRenderData>(l).to({ alpha }, 200))
+      tweenGroup.add(new Tweened(l).to({ alpha }, 200))
     }
 
-    tweenGroup.getAll().forEach((tw) => tw.start())
+    tweenGroup.getAll().forEach((tw: any) => tw.start())
     tweens.set("link", {
       update: tweenGroup.update.bind(tweenGroup),
       stop() {
-        tweenGroup.getAll().forEach((tw) => tw.stop())
+        tweenGroup.getAll().forEach((tw: any) => tw.stop())
       },
     })
   }
@@ -286,7 +320,7 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
 
       if (hoveredNodeId === nodeId) {
         tweenGroup.add(
-          new Tweened<Text>(n.label).to(
+          new Tweened(n.label).to(
             {
               alpha: 1,
               scale: { x: activeScale, y: activeScale },
@@ -296,7 +330,7 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
         )
       } else {
         tweenGroup.add(
-          new Tweened<Text>(n.label).to(
+          new Tweened(n.label).to(
             {
               alpha: n.label.alpha,
               scale: { x: defaultScale, y: defaultScale },
@@ -307,11 +341,11 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
       }
     }
 
-    tweenGroup.getAll().forEach((tw) => tw.start())
+    tweenGroup.getAll().forEach((tw: any) => tw.start())
     tweens.set("label", {
       update: tweenGroup.update.bind(tweenGroup),
       stop() {
-        tweenGroup.getAll().forEach((tw) => tw.stop())
+        tweenGroup.getAll().forEach((tw: any) => tw.stop())
       },
     })
   }
@@ -328,14 +362,14 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
         alpha = n.active ? 1 : 0.2
       }
 
-      tweenGroup.add(new Tweened<Graphics>(n.gfx, tweenGroup).to({ alpha }, 200))
+      tweenGroup.add(new Tweened(n.gfx, tweenGroup).to({ alpha }, 200))
     }
 
-    tweenGroup.getAll().forEach((tw) => tw.start())
+    tweenGroup.getAll().forEach((tw: any) => tw.start())
     tweens.set("hover", {
       update: tweenGroup.update.bind(tweenGroup),
       stop() {
-        tweenGroup.getAll().forEach((tw) => tw.stop())
+        tweenGroup.getAll().forEach((tw: any) => tw.stop())
       },
     })
   }
@@ -366,9 +400,9 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
   const stage = app.stage
   stage.interactive = false
 
-  const labelsContainer = new Container<Text>({ zIndex: 3, isRenderGroup: true })
-  const nodesContainer = new Container<Graphics>({ zIndex: 2, isRenderGroup: true })
-  const linkContainer = new Container<Graphics>({ zIndex: 1, isRenderGroup: true })
+  const labelsContainer = new Container({ zIndex: 3, isRenderGroup: true })
+  const nodesContainer = new Container({ zIndex: 2, isRenderGroup: true })
+  const linkContainer = new Container({ zIndex: 1, isRenderGroup: true })
   stage.addChild(nodesContainer, labelsContainer, linkContainer)
 
   for (const n of graphData.nodes) {
@@ -400,7 +434,7 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
     })
       .circle(0, 0, nodeRadius(n))
       .fill({ color: isTagNode ? computedStyleMap["--light"] : color(n) })
-      .on("pointerover", (e) => {
+      .on("pointerover", (e: any) => {
         updateHoverInfo(e.target.label)
         oldLabelOpacity = label.alpha
         if (!dragging) {
@@ -451,11 +485,11 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
 
   let currentTransform = zoomIdentity
   if (enableDrag) {
-    select<HTMLCanvasElement, NodeData | undefined>(app.canvas).call(
-      drag<HTMLCanvasElement, NodeData | undefined>()
+    (select(app.canvas) as any).call(
+      drag()
         .container(() => app.canvas)
         .subject(() => graphData.nodes.find((n) => n.id === hoveredNodeId))
-        .on("start", function dragstarted(event) {
+        .on("start", function dragstarted(event: any) {
           if (!event.active) simulation.alphaTarget(1).restart()
           event.subject.fx = event.subject.x
           event.subject.fy = event.subject.y
@@ -468,12 +502,12 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
           dragStartTime = Date.now()
           dragging = true
         })
-        .on("drag", function dragged(event) {
+        .on("drag", function dragged(event: any) {
           const initPos = event.subject.__initialDragPos
           event.subject.fx = initPos.x + (event.x - initPos.x) / currentTransform.k
           event.subject.fy = initPos.y + (event.y - initPos.y) / currentTransform.k
         })
-        .on("end", function dragended(event) {
+        .on("end", function dragended(event: any) {
           if (!event.active) simulation.alphaTarget(0)
           event.subject.fx = null
           event.subject.fy = null
@@ -497,14 +531,14 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
   }
 
   if (enableZoom) {
-    select<HTMLCanvasElement, NodeData>(app.canvas).call(
-      zoom<HTMLCanvasElement, NodeData>()
+    (select(app.canvas) as any).call(
+      zoom()
         .extent([
           [0, 0],
           [width, height],
         ])
         .scaleExtent([0.25, 4])
-        .on("zoom", ({ transform }) => {
+        .on("zoom", ({ transform }: any) => {
           currentTransform = transform
           stage.scale.set(transform.k, transform.k)
           stage.position.set(transform.x, transform.y)
@@ -516,7 +550,7 @@ async function renderGraph(graph: HTMLElement, fullSlug: FullSlug) {
 
           for (const label of labelsContainer.children) {
             if (!activeNodes.includes(label)) {
-              label.alpha = scaleOpacity
+              (label as any).alpha = scaleOpacity
             }
           }
         }),

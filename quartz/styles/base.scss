@@ -9,6 +9,10 @@ html {
   text-size-adjust: none;
   overflow-x: hidden;
   width: 100vw;
+  // Improve font rendering performance
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -17,6 +21,8 @@ body {
   background-color: var(--light);
   font-family: var(--bodyFont);
   color: var(--darkgray);
+  // Optimize rendering performance
+  contain: layout style paint;
 }
 
 .text-highlight {
